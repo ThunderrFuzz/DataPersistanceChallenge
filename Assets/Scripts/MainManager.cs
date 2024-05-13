@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -11,21 +12,39 @@ public class MainManager : MonoBehaviour
     public Rigidbody Ball;
 
     public Text ScoreText;
+    public TMP_Text BestScore;
     public GameObject GameOverText;
-    
+
     private bool m_Started = false;
     private int m_Points;
-    
-    private bool m_GameOver = false;
 
-    
+    private bool m_GameOver = false;
+    public static MainManager Instance { get; private set; }
+
+    private MainMenu_UI saveManager;
+
+    private void Awake()
+    {
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            Instance = null;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+        m_GameOver = false;
+    }
+
     // Start is called before the first frame update
     void Start()
     {
+        saveManager = MainMenu_UI.Instance;
+        UpdateBestScoreText();
+
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
-        
-        int[] pointCountArray = new [] {1,1,2,2,5,5};
+
+        int[] pointCountArray = new[] { 1, 1, 2, 2, 5, 5 };
         for (int i = 0; i < LineCount; ++i)
         {
             for (int x = 0; x < perLine; ++x)
@@ -72,5 +91,48 @@ public class MainManager : MonoBehaviour
     {
         m_GameOver = true;
         GameOverText.SetActive(true);
+
+        // Save current score if it's higher than previous high score
+        int[] highScores = saveManager.LoadGameData<int[]>();
+        if (m_Points > highScores[0])
+        {
+            highScores[0] = m_Points;
+            saveManager.SaveGameData(highScores);
+        }
+
+        UpdateBestScoreText();
     }
+
+    public int getPoints()
+    {
+        return m_Points;
+    }
+
+    void UpdateBestScoreText()
+    {
+        int[] highScores = saveManager.LoadGameData<int[]>();
+        string playerName = saveManager.LoadGameData<string>();
+
+        // Check if highScores array is null or empty
+        if (highScores == null || highScores.Length == 0)
+        {
+            // Set default values if no high scores are found
+            int defaultHighestScore = 0;
+            BestScore.text = $"Best Score: {defaultHighestScore}  Name: {playerName}";
+            return;
+        }
+
+        // Find the highest high score
+        int highestScore = highScores[0];
+        foreach (int score in highScores)
+        {
+            if (score > highestScore)
+                highestScore = score;
+        }
+
+        // Update the Best Score text
+        BestScore.text = $"Best Score: {highestScore}  Name: {playerName}";
+    }
+
+
 }
